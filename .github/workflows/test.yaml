@@ -15,6 +15,9 @@ jobs:
           value="$(jq -r --arg key "$secret" '.[$key]' <<< "$SECRETS")"
           echo "$secret=$value" >> secret.env
         done
+    - name: echo secret
+      run: |
+        cat secret.env
     - name: build using custom actions
       uses : ChocTitans/composite-action@composite
       with :
@@ -22,6 +25,4 @@ jobs:
        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
        aws-cluster-name: ${{ vars.AWS_NAME_CLUSTER }}
        aws-region: ${{ vars.AWS_REGION }}
-       config-json: '{"MEILI_ENV": "${{ secrets.MEILI_ENV }}", "MEILI_NO_ANALYTICS": "${{ secrets.MEILI_NO_ANALYTICS }}"}'
-       secrets-json: '{"MEILI_MASTER_KEY": "${{ secrets.MEILI_MASTER_KEY }}"}'
        
