@@ -36,6 +36,7 @@ runs:
   - name: Create Secret file
     env:
       SECRETS: '${{ inputs.secrets }} }}'
+    shell: bash
     run: |
       touch secret.env
       for secret in $(echo "$SECRETS" | jq -r 'keys[]'); do
