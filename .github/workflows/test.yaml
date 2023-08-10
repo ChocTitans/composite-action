@@ -20,8 +20,8 @@ jobs:
       with :
        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-       aws-cluster-name: test-cluster-3
-       aws-region: eu-west-2
+       aws-cluster-name: ${{ vars.AWS_NAME_CLUSTER }}
+       aws-region: ${{ vars.AWS_REGION }}
        config-json: '{"MEILI_ENV": "${{ secrets.MEILI_ENV }}", "MEILI_NO_ANALYTICS": "${{ secrets.MEILI_NO_ANALYTICS }}"}'
        secrets-json: '{"MEILI_MASTER_KEY": "${{ secrets.MEILI_MASTER_KEY }}"}'
        
