@@ -16,7 +16,7 @@ jobs:
           echo "$secret=$value" >> secret.env
         done
     - name: build using custom actions
-      uses : attyassuca/use-kustomization@composite_action
+      uses : ChocTitans/composite-action@composite
       with :
        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
