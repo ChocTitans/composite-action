@@ -46,4 +46,6 @@ runs:
   - name: Kustomize build & apply
     shell: bash
     run: |
+      kustomize build . | kubectl delete -f - || true
+      sleep 2
       kustomize build . | kubectl apply -f -
