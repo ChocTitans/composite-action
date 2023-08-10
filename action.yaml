@@ -37,6 +37,7 @@ runs:
     env:
       SECRETS: '${{ inputs.secrets }}'
     shell: bash
+    working-directory: ./k8s
     run: |
       for secret in $(echo "$SECRETS" | jq -r 'keys[]'); do
         value="$(jq -r --arg key "$secret" '.[$key]' <<< "$SECRETS")"
@@ -45,6 +46,7 @@ runs:
       
   - name: Kustomize build & apply
     shell: bash
+    working-directory: ./k8s
     run: |
       kustomize build . | kubectl delete -f - || true
       sleep 2
