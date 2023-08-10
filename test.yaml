@@ -1,0 +1,27 @@
+name: test workflow
+on:
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Create Secret file
+      env:
+        SECRETS: '${{ toJson(secrets) }}'
+      run: |
+        touch secret.env
+        for secret in $(echo "$SECRETS" | jq -r 'keys[]'); do
+          value="$(jq -r --arg key "$secret" '.[$key]' <<< "$SECRETS")"
+          echo "$secret=$value" >> secret.env
+        done
+    - name: build using custom actions
+      uses : attyassuca/use-kustomization@composite_action
+      with :
+       aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+       aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+       aws-cluster-name: test-cluster-3
+       aws-region: eu-west-2
+       config-json: '{"MEILI_ENV": "${{ secrets.MEILI_ENV }}", "MEILI_NO_ANALYTICS": "${{ secrets.MEILI_NO_ANALYTICS }}"}'
+       secrets-json: '{"MEILI_MASTER_KEY": "${{ secrets.MEILI_MASTER_KEY }}"}'
+       
