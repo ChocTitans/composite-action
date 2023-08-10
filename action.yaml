@@ -2,7 +2,7 @@ name: "Deploy using kustomize"
 description: "Deploy using kustomize to AWS S3"
 inputs:
   secrets:
-    required: false
+    required: true
     description: "The aws-access-key-id used to authenticate with AWS"
   aws-secret-access-key:
     required: true
@@ -32,8 +32,17 @@ runs:
     run: |
       curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh"  | bash
       sudo mv kustomize /usr/local/bin/
-
-
+  - name: echo input secret
+    run: |
+      echo ${{ inputs.secrets }}
+  - name: Create secret file
+     env:
+        SECRETS: '${{ inputs.secrets }}'
+      run: |
+        for secret in $(echo "$SECRETS" | jq -r 'keys[]'); do
+          value="$(jq -r --arg key "$secret" '.[$key]' <<< "$SECRETS")"
+          echo "$secret=$value" >> secret.env
+        done
   - name: Kustomize build & apply
     shell: bash
     run: |
