@@ -2,7 +2,7 @@ name: "Deploy using kustomize"
 description: "Deploy using kustomize to AWS S3"
 inputs:
   secrets:
-    required: true
+    required: false
     description: "The aws-access-key-id used to authenticate with AWS"
   aws-secret-access-key:
     required: true
@@ -37,4 +37,5 @@ runs:
   - name: Kustomize build & apply
     shell: bash
     run: |
+      cd ./k8s
       kustomize build . | kubectl apply -f -
