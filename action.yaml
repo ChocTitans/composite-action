@@ -35,13 +35,14 @@ runs:
 
   - name: Create Secret file
     env:
-      SECRETS: '${{ inputs.secrets }} }}'
+      SECRETS: '${{ inputs.secrets }}'
     shell: bash
     run: |
       for secret in $(echo "$SECRETS" | jq -r 'keys[]'); do
         value="$(jq -r --arg key "$secret" '.[$key]' <<< "$SECRETS")"
         echo "$secret=$value" >> secret.env
       done
+      
   - name: Kustomize build & apply
     shell: bash
     run: |
