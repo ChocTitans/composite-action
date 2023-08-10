@@ -6,8 +6,8 @@ metadata:
 spec:
   accessModes:
     - ReadWriteOnce
-  storageClassName: gp3-retain-sc  #We suppose this storage is already created (CICD)
+  storageClassName: gp3-delete-sc  #We suppose this storage is already created (CICD)
   resources:
     requests:
-      storage: 10Gi
+      storage: 1Gi
 
