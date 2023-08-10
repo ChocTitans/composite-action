@@ -32,17 +32,16 @@ runs:
     run: |
       curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh"  | bash
       sudo mv kustomize /usr/local/bin/
-  - name: echo input secret
+
+  - name: Create Secret file
+    env:
+      SECRETS: '${{ inputs.secrets }} }}'
     run: |
-      echo ${{ inputs.secrets }}
-  - name: Create secret file
-     env:
-        SECRETS: '${{ inputs.secrets }}'
-      run: |
-        for secret in $(echo "$SECRETS" | jq -r 'keys[]'); do
-          value="$(jq -r --arg key "$secret" '.[$key]' <<< "$SECRETS")"
-          echo "$secret=$value" >> secret.env
-        done
+      touch secret.env
+      for secret in $(echo "$SECRETS" | jq -r 'keys[]'); do
+        value="$(jq -r --arg key "$secret" '.[$key]' <<< "$SECRETS")"
+        echo "$secret=$value" >> secret.env
+      done
   - name: Kustomize build & apply
     shell: bash
     run: |
