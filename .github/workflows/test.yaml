@@ -6,18 +6,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
-    - name: Create Secret file
-      env:
-        SECRETS: '${{ toJson(secrets) }}'
-      run: |
-        touch secret.env
-        for secret in $(echo "$SECRETS" | jq -r 'keys[]'); do
-          value="$(jq -r --arg key "$secret" '.[$key]' <<< "$SECRETS")"
-          echo "$secret=$value" >> secret.env
-        done
-    - name: echo secret
-      run: |
-        cat secret.env
     - name: build using custom actions
       uses : ChocTitans/composite-action@composite
       with :
@@ -25,4 +13,5 @@ jobs:
        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
        aws-cluster-name: ${{ vars.AWS_NAME_CLUSTER }}
        aws-region: ${{ vars.AWS_REGION }}
+       secrets: ${{ toJson(secrets) }}
        
