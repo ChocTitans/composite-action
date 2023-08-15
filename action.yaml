@@ -13,7 +13,11 @@ inputs:
   aws-region:
     required: true
     description: "The region of the cluster"
-
+  path:
+    required: false
+    description: "the path of your manifest files"
+    default: .  
+    
 runs:
   using: "composite"
   steps:
