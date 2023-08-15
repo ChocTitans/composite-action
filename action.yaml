@@ -17,7 +17,7 @@ inputs:
     required: false
     description: "the path of your manifest files"
     default: .  
-    
+
 runs:
   using: "composite"
   steps:
@@ -41,7 +41,7 @@ runs:
     env:
       SECRETS: '${{ inputs.secrets }}'
     shell: bash
-    working-directory: ./k8s
+    working-directory: ${{ inputs.path }}
     run: |
       for secret in $(echo "$SECRETS" | jq -r 'keys[]'); do
         value="$(jq -r --arg key "$secret" '.[$key]' <<< "$SECRETS")"
@@ -50,7 +50,7 @@ runs:
       
   - name: Kustomize build & apply
     shell: bash
-    working-directory: ./k8s
+    working-directory: ${{ inputs.path }}
     run: |
       kustomize build . | kubectl delete -f - || true
       sleep 2
