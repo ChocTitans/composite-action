@@ -4,6 +4,9 @@ inputs:
   secrets:
     required: true
     description: "The aws-access-key-id used to authenticate with AWS"
+  vars:
+    required: true
+    description: "The aws-access-key-id used to authenticate with AWS"
   aws-secret-access-key:
     required: true
     description: "The aws-secret-access-key used to authenticate with AWS"
@@ -13,6 +16,10 @@ inputs:
   aws-region:
     required: true
     description: "The region of the cluster"
+  path:
+    required: false
+    description: "the path of your manifest files"
+    default: .  
 
 runs:
   using: "composite"
@@ -24,6 +31,7 @@ runs:
       aws-access-key-id: ${{ inputs.aws-access-key-id }}
       aws-secret-access-key: ${{ inputs.aws-secret-access-key }}
       aws-region: ${{ inputs.aws-region }}
+      
   - name: update kube config
     shell: bash
     run: aws eks update-kubeconfig --name ${{ inputs.aws-cluster-name }} --region ${{ inputs.aws-region }}
@@ -33,8 +41,38 @@ runs:
       curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh"  | bash
       sudo mv kustomize /usr/local/bin/
 
+    - name: Create Secret file
+      working-directory: ./k8s
+      env:
+        SECRETS: '${{ toJson(secrets) }}'
+      run: |
+        for secret in $(echo "$SECRETS" | jq -r 'keys[]'); do
+          if [[ "$secret" != "github_token" && ! "$secret" =~ ^AWS_ ]]; then
+            value="$(jq -r --arg key "$secret" '.[$key]' <<< "$SECRETS")"
+            echo "$secret=$value" >> secret.env
+          fi
+        done
+        if [[ ! -s secret.env ]]; then
+          echo "Error: secrets.env is empty"
+          exit 1
+        fi
 
+    - name: Append Github Vars to ConfigMap
+      working-directory: ./k8s
+      env:
+        VARS: '${{ toJson(vars) }}'
+      run: |
+        for vars in $(echo "$VARS" | jq -r 'keys[]'); do
+          if [[ ! "$vars" =~ ^AWS_ ]]; then
+            value="$(jq -r --arg key "$vars" '.[$key]' <<< "$VARS")"
+            echo -e "\n$vars=$value" >> configmap.env
+          fi
+        done
+      
   - name: Kustomize build & apply
     shell: bash
+    working-directory: ${{ inputs.path }}
     run: |
-      kustomize build . 
+      kustomize build . | kubectl delete -f - || true
+      sleep 2
+      kustomize build . | kubectl apply -f -
