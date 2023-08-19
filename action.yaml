@@ -31,6 +31,7 @@ runs:
       aws-access-key-id: ${{ inputs.aws-access-key-id }}
       aws-secret-access-key: ${{ inputs.aws-secret-access-key }}
       aws-region: ${{ inputs.aws-region }}
+      
   - name: update kube config
     shell: bash
     run: aws eks update-kubeconfig --name ${{ inputs.aws-cluster-name }} --region ${{ inputs.aws-region }}
@@ -40,27 +41,33 @@ runs:
       curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh"  | bash
       sudo mv kustomize /usr/local/bin/
 
-  - name: Create Secret file
-    env:
-      SECRETS: '${{ inputs.secrets }}'
-    shell: bash
-    working-directory: ${{ inputs.path }}
-    run: |
-      for secret in $(echo "$SECRETS" | jq -r 'keys[]'); do
-        value="$(jq -r --arg key "$secret" '.[$key]' <<< "$SECRETS")"
-        echo "$secret=$value" >> secret.env
-      done
+    - name: Create Secret file
+      working-directory: ./k8s
+      env:
+        SECRETS: '${{ toJson(secrets) }}'
+      run: |
+        for secret in $(echo "$SECRETS" | jq -r 'keys[]'); do
+          if [[ "$secret" != "github_token" && ! "$secret" =~ ^AWS_ ]]; then
+            value="$(jq -r --arg key "$secret" '.[$key]' <<< "$SECRETS")"
+            echo "$secret=$value" >> secret.env
+          fi
+        done
+        if [[ ! -s secret.env ]]; then
+          echo "Error: secrets.env is empty"
+          exit 1
+        fi
 
-  - name: Create ConfigMap file
-    env:
-      VARS: '${{ inputs.vars }}'
-    shell: bash
-    working-directory: ${{ inputs.path }}
-    run: |
-      for vars in $(echo "$VARS" | jq -r 'keys[]'); do
-        value="$(jq -r --arg key "$vars" '.[$key]' <<< "$VARS")"
-        echo "$vars=$value" >> configmap.env
-      done
+    - name: Append Github Vars to ConfigMap
+      working-directory: ./k8s
+      env:
+        VARS: '${{ toJson(vars) }}'
+      run: |
+        for vars in $(echo "$VARS" | jq -r 'keys[]'); do
+          if [[ ! "$vars" =~ ^AWS_ ]]; then
+            value="$(jq -r --arg key "$vars" '.[$key]' <<< "$VARS")"
+            echo -e "\n$vars=$value" >> configmap.env
+          fi
+        done
       
   - name: Kustomize build & apply
     shell: bash
