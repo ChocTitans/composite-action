@@ -1,15 +1,18 @@
 name: "Deploy using kustomize"
-description: "Deploy using kustomize to AWS S3"
+description: "Deploy using kustomize to AWS K8S"
 inputs:
-  secrets:
-    required: true
-    description: "The aws-access-key-id used to authenticate with AWS"
   vars:
     required: true
-    description: "The aws-access-key-id used to authenticate with AWS"
+    description: "grab all the vars as a json format"
+  secrets:
+    required: true
+    description: "grab all the secrets as a json format"
   aws-secret-access-key:
     required: true
     description: "The aws-secret-access-key used to authenticate with AWS"
+  aws-access-key-id:
+    required: true
+    description: "The aws-access-key-id used to authenticate with AWS"  
   aws-cluster-name:
     required: true
     description: "The cluster where we want to deploy the app"
@@ -27,52 +30,51 @@ runs:
   - name: Set up AWS credentials
     uses: aws-actions/configure-aws-credentials@v1
     with:
-      # Actions can't access to secrets so i pass them in as inputs
+      # Actions can't access to secrets so passing them in as inputs
       aws-access-key-id: ${{ inputs.aws-access-key-id }}
       aws-secret-access-key: ${{ inputs.aws-secret-access-key }}
       aws-region: ${{ inputs.aws-region }}
-      
   - name: update kube config
     shell: bash
     run: aws eks update-kubeconfig --name ${{ inputs.aws-cluster-name }} --region ${{ inputs.aws-region }}
+      
   - name: Install kustomize
     shell: bash
     run: |
       curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh"  | bash
       sudo mv kustomize /usr/local/bin/
-
-    - name: Create Secret file
-      working-directory: ./k8s
-      env:
-        SECRETS: '${{ toJson(secrets) }}'
-      run: |
-        for secret in $(echo "$SECRETS" | jq -r 'keys[]'); do
-          if [[ "$secret" != "github_token" && ! "$secret" =~ ^AWS_ ]]; then
-            value="$(jq -r --arg key "$secret" '.[$key]' <<< "$SECRETS")"
-            echo "$secret=$value" >> secret.env
-          fi
-        done
+     
+  - name: Create Secret file
+    working-directory: ${{ inputs.path }}
+    shell: bash
+    env:
+      SECRETS: '${{ inputs.secrets }}'
+    run: |
+      for secret in $(echo "$SECRETS" | jq -r 'keys[]'); do
+        if [[ "$secret" != "github_token" && ! "$secret" =~ ^AWS_ ]]; then
+          value="$(jq -r --arg key "$secret" '.[$key]' <<< "$SECRETS")"
+          echo "$secret=$value" >> secret.env
+        fi
+      done
         if [[ ! -s secret.env ]]; then
           echo "Error: secrets.env is empty"
-          exit 1
         fi
 
-    - name: Append Github Vars to ConfigMap
-      working-directory: ./k8s
-      env:
-        VARS: '${{ toJson(vars) }}'
-      run: |
-        for vars in $(echo "$VARS" | jq -r 'keys[]'); do
-          if [[ ! "$vars" =~ ^AWS_ ]]; then
-            value="$(jq -r --arg key "$vars" '.[$key]' <<< "$VARS")"
-            echo -e "\n$vars=$value" >> configmap.env
-          fi
-        done
-      
-  - name: Kustomize build & apply
-    shell: bash
+  - name: Append Github Vars to ConfigMap
     working-directory: ${{ inputs.path }}
+    env:
+      VARS: '${{ inputs.vars }}'
+    shell: bash  
     run: |
-      kustomize build . | kubectl delete -f - || true
-      sleep 2
+      for vars in $(echo "$VARS" | jq -r 'keys[]'); do
+        if [[ ! "$vars" =~ ^AWS_ ]]; then
+          value="$(jq -r --arg key "$vars" '.[$key]' <<< "$VARS")"
+          echo -e "\n$vars=$value" >> configmap.env
+        fi
+      done        
+
+  - name: Kustomize build & apply
+    working-directory: ${{ inputs.path }}
+    shell: bash
+    run: |
       kustomize build . | kubectl apply -f -
